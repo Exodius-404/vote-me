@@ -4,7 +4,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyBuoDfc7Uw6YCOR2OK1NLL1bX78f221uWY",
   authDomain: "vote-me-96637.firebaseapp.com",
   projectId: "vote-me-96637",
-  storageBucket: "vote-me-96637.firebasestorage.app",
+  storageBucket: "vote-me-96637.appspot.com",
   messagingSenderId: "499650109945",
   appId: "1:499650109945:web:cf7db5781ab6d00266dd28",
   measurementId: "G-HNS9CFDYB3"
@@ -109,20 +109,50 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 
-  // Use polling instead of onSnapshot to avoid long-lived webchannel streams
-  async function pollSubmissions(){
+  // verify Firestore connectivity before starting polling/handlers
+  let firestoreOk = false;
+  async function verifyFirestore(timeoutMs = 5000){
     try{
-      const snap = await getDocs(query(collection(db,'submissions'), orderBy('createdAt','desc')));
-      submissions = snap.docs.map(d=>({ id: d.id, ...d.data() }));
-      const sess = getSession();
-      if(sess.userId) renderVoting(sess.userId);
+      const controller = new AbortController();
+      const id = setTimeout(()=> controller.abort(), timeoutMs);
+      // simple read to test access
+      await getDocs(collection(db,'submissions'));
+      clearTimeout(id);
+      return true;
     }catch(e){
-      console.warn('pollSubmissions error:', e);
+      console.warn('verifyFirestore failed', e);
+      return false;
     }
   }
-  // initial poll and regular interval
-  pollSubmissions();
-  const _pollInterval = setInterval(pollSubmissions, 5000);
+
+  async function startPollingIfOk(){
+    firestoreOk = await verifyFirestore();
+    const banner = document.getElementById('build-banner');
+    if(!firestoreOk){
+      if(banner) banner.textContent = 'Fehler: Firestore nicht erreichbar. Prüfe `firebaseConfig` oder deaktiviere Browser-Extensions (Adblock).';
+      console.error('Firestore not available; disabling realtime features.');
+      return; // do not start polling or attach DB-dependent flows
+    }
+    if(banner) banner.textContent = 'Connected to Firestore.';
+
+    // Use polling instead of onSnapshot to avoid long-lived webchannel streams
+    async function pollSubmissions(){
+      try{
+        const snap = await getDocs(query(collection(db,'submissions'), orderBy('createdAt','desc')));
+        submissions = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+        const sess = getSession();
+        if(sess.userId) renderVoting(sess.userId);
+      }catch(e){
+        console.warn('pollSubmissions error:', e);
+      }
+    }
+    // initial poll and regular interval
+    pollSubmissions();
+    const _pollInterval = setInterval(pollSubmissions, 5000);
+  }
+
+  // start
+  startPollingIfOk();
 
   // Submit vote button
   document.getElementById('btn-submit-vote').addEventListener('click', async ()=>{
