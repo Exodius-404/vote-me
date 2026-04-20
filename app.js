@@ -4,16 +4,16 @@ const firebaseConfig = {
   apiKey: "AIzaSyBuoDfc7Uw6YCOR2OK1NLL1bX78f221uWY",
   authDomain: "vote-me-96637.firebaseapp.com",
   projectId: "vote-me-96637",
-  storageBucket: "vote-me-96637.appspot.com",
+  storageBucket: "vote-me-96637.firebasestorage.app",
   messagingSenderId: "499650109945",
   appId: "1:499650109945:web:cf7db5781ab6d00266dd28",
   measurementId: "G-HNS9CFDYB3"
 };
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js';
-import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, getDocs, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js';
-// analytics removed to avoid extra REST calls when project config is missing
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
+import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, getDocs, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js';
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
