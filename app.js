@@ -109,11 +109,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
 
-  onSnapshot(collection(db,'submissions'), snap=>{
-    submissions = snap.docs.map(d=>({ id: d.id, ...d.data() }));
-    const sess = getSession();
-    if(sess.userId) renderVoting(sess.userId);
-  });
+  // Use polling instead of onSnapshot to avoid long-lived webchannel streams
+  async function pollSubmissions(){
+    try{
+      const snap = await getDocs(query(collection(db,'submissions'), orderBy('createdAt','desc')));
+      submissions = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+      const sess = getSession();
+      if(sess.userId) renderVoting(sess.userId);
+    }catch(e){
+      console.warn('pollSubmissions error:', e);
+    }
+  }
+  // initial poll and regular interval
+  pollSubmissions();
+  const _pollInterval = setInterval(pollSubmissions, 5000);
 
   // Submit vote button
   document.getElementById('btn-submit-vote').addEventListener('click', async ()=>{
