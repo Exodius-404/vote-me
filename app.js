@@ -10,10 +10,10 @@ const firebaseConfig = {
   measurementId: "G-HNS9CFDYB3"
 };
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, getDocs, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js';
+import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, getDocs, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js';
+import { getAnalytics } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-analytics.js';
 
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
