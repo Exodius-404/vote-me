@@ -11,133 +11,139 @@ const firebaseConfig = {
 };
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js';
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, getDocs, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-storage.js';
 import { getAnalytics } from 'https://www.gstatic.com/firebasejs/9.23.0/firebase-analytics.js';
 
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
-const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
-// UI refs
-const tabSubmit = document.getElementById('tab-submit');
-const tabBrowse = document.getElementById('tab-browse');
-const tabAdmin = document.getElementById('tab-admin');
-const panelSubmit = document.getElementById('panel-submit');
-const panelBrowse = document.getElementById('panel-browse');
-const panelAdmin = document.getElementById('panel-admin');
+// Pages
+const loginPage = document.getElementById('login-page');
+const registerPage = document.getElementById('register-page');
+const votingPage = document.getElementById('voting-page');
+const adminPage = document.getElementById('admin-page');
 
-function show(panel){
-  panelSubmit.classList.add('hidden');
-  panelBrowse.classList.add('hidden');
-  panelAdmin.classList.add('hidden');
-  panel.classList.remove('hidden');
+function showPage(page){
+  [loginPage, registerPage, votingPage, adminPage].forEach(p=>p.classList.add('hidden'));
+  page.classList.remove('hidden');
 }
 
-tabSubmit.onclick = ()=> show(panelSubmit);
-tabBrowse.onclick = ()=> show(panelBrowse);
-tabAdmin.onclick = ()=> show(panelAdmin);
+// Navigation links between login/register
+document.getElementById('link-to-register').addEventListener('click', (e)=>{ e.preventDefault(); showPage(registerPage); });
+document.getElementById('link-to-login').addEventListener('click', (e)=>{ e.preventDefault(); showPage(loginPage); });
 
-// Registration / login
+// Local session helpers
+function setSession(userId, username){ localStorage.setItem('vm_userId', userId); localStorage.setItem('vm_username', username); }
+function clearSession(){ localStorage.removeItem('vm_userId'); localStorage.removeItem('vm_username'); }
+function getSession(){ return { userId: localStorage.getItem('vm_userId'), username: localStorage.getItem('vm_username') }; }
+
+// Login by username
+document.getElementById('btn-login-username').addEventListener('click', async ()=>{
+  const username = document.getElementById('login-username').value.trim();
+  if(!username){ alert('Bitte Nutzernamen eingeben'); return; }
+  const q = query(collection(db,'users'), where('username','==',username));
+  const snap = await getDocs(q);
+  if(snap.empty){ alert('Nutzername nicht gefunden'); return; }
+  const userDoc = snap.docs[0];
+  setSession(userDoc.id, username);
+  showVotingForUser();
+});
+
+// Register: unique username + upload photo + create submission
 document.getElementById('btn-register').addEventListener('click', async ()=>{
-  const name = document.getElementById('reg-name').value.trim();
-  const email = document.getElementById('reg-email').value.trim();
-  const pass = document.getElementById('reg-pass').value;
+  const username = document.getElementById('reg-username').value.trim();
   const file = document.getElementById('reg-file').files[0];
-  const status = document.getElementById('submit-status');
-  if(!name || !email || !pass || !file){ status.textContent = 'Bitte alle Felder ausfüllen und Foto wählen.'; return; }
-  status.textContent = 'Registriere…';
+  const status = document.getElementById('register-status');
+  if(!username || !file){ status.textContent = 'Bitte Namen und Foto angeben.'; return; }
+  status.textContent = 'Prüfe Namen…';
+  const q = query(collection(db,'users'), where('username','==',username));
+  const snap = await getDocs(q);
+  if(!snap.empty){ status.textContent = 'Dieser Name ist bereits vergeben.'; return; }
+  status.textContent = 'Erstelle Account…';
   try{
-    const cred = await createUserWithEmailAndPassword(auth, email, pass);
-    const uid = cred.user.uid;
-    const storageRef = ref(storage, `outfits/${uid}_${Date.now()}`);
+    const userRef = await addDoc(collection(db,'users'), { username, createdAt: serverTimestamp() });
+    const userId = userRef.id;
+    // upload image
+    const storageRef = ref(storage, `outfits/${userId}_${Date.now()}`);
     const bytes = await file.arrayBuffer();
     await uploadBytes(storageRef, new Uint8Array(bytes));
     const url = await getDownloadURL(storageRef);
-    await addDoc(collection(db,'submissions'), { uid, name, imageUrl: url, createdAt: serverTimestamp() });
-    status.textContent = 'Erfolgreich registriert und Outfit hochgeladen.';
-  }catch(e){ status.textContent = 'Fehler: ' + e.message; }
+    // create submission
+    await addDoc(collection(db,'submissions'), { userId, username, imageUrl: url, createdAt: serverTimestamp() });
+    setSession(userId, username);
+    status.textContent = 'Registrierung erfolgreich.';
+    showVotingForUser();
+  }catch(e){ status.textContent = 'Fehler: '+e.message; }
 });
 
-document.getElementById('btn-login').addEventListener('click', async ()=>{
-  const email = document.getElementById('login-email').value.trim();
-  const pass = document.getElementById('login-pass').value;
-  try{ await signInWithEmailAndPassword(auth,email,pass); alert('Angemeldet'); } catch(e){ alert('Login fehlgeschlagen: '+e.message); }
-});
-document.getElementById('btn-logout').addEventListener('click', async ()=>{ await signOut(auth); alert('Abgemeldet'); });
+// Logout
+document.getElementById('btn-logout').addEventListener('click', ()=>{ clearSession(); showPage(loginPage); });
 
-// Browse & Voting
+// Voting logic
 const submissionsList = document.getElementById('submissions-list');
 let submissions = [];
-let votes = [];
+let currentSelection = null;
 
-function renderSubmissions(){
-  const voteCount = votes.reduce((m,v)=>{ m[v.submissionId] = (m[v.submissionId]||0)+1; return m; },{});
+async function fetchUserVote(userId){
+  const q = query(collection(db,'votes'), where('voterId','==',userId));
+  const snap = await getDocs(q);
+  return snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+}
+
+function renderVoting(userId){
   submissionsList.innerHTML = '';
   submissions.forEach(s=>{
-    const card = document.createElement('div'); card.className='card';
-    const img = document.createElement('img'); img.src = s.imageUrl; img.alt = s.name || '';
-    const h = document.createElement('h4'); h.textContent = s.name || '';
-    const cnt = document.createElement('div'); cnt.className='count'; cnt.textContent = 'Stimmen: ' + (voteCount[s.id]||0);
-    const btn = document.createElement('button'); btn.textContent='Abstimmen';
-    if(localStorage.getItem('voted_'+s.id)){ btn.disabled=true; btn.textContent='Schon abgestimmt'; }
-    btn.addEventListener('click', async ()=>{
-      if(localStorage.getItem('voted_'+s.id)) return;
-      await addDoc(collection(db,'votes'), { submissionId: s.id, createdAt: serverTimestamp() });
-      localStorage.setItem('voted_'+s.id,'1');
-      loadVotes();
-    });
-    card.appendChild(img); card.appendChild(h); card.appendChild(cnt); card.appendChild(btn);
+    const card = document.createElement('div'); card.className='card submission-card';
+    const label = document.createElement('label'); label.className='submission-label';
+    const radio = document.createElement('input'); radio.type='radio'; radio.name='vote'; radio.value = s.id;
+    radio.addEventListener('change', ()=> currentSelection = s.id);
+    const img = document.createElement('img'); img.src = s.imageUrl; img.alt = s.username || s.name || 'Outfit';
+    const h = document.createElement('div'); h.textContent = s.username || '';
+    label.appendChild(radio); label.appendChild(img); label.appendChild(h);
+    card.appendChild(label);
     submissionsList.appendChild(card);
   });
 }
 
-async function loadSubmissions(){
-  const snap = await getDocs(query(collection(db,'submissions'), orderBy('createdAt','desc')));
+onSnapshot(collection(db,'submissions'), snap=>{
   submissions = snap.docs.map(d=>({ id: d.id, ...d.data() }));
-  renderSubmissions();
-}
-
-async function loadVotes(){
-  const snap = await getDocs(collection(db,'votes'));
-  votes = snap.docs.map(d=>({ id:d.id, ...d.data() }));
-  renderSubmissions();
-}
-
-onSnapshot(collection(db,'submissions'), ()=> loadSubmissions());
-onSnapshot(collection(db,'votes'), ()=> loadVotes());
-
-// Admin: compute rankings and CSV export
-document.getElementById('btn-refresh-stats').addEventListener('click', ()=> computeRankings());
-async function computeRankings(){
-  const snapS = await getDocs(collection(db,'submissions'));
-  const snapV = await getDocs(collection(db,'votes'));
-  const subs = snapS.docs.map(d=>({ id:d.id, ...d.data() }));
-  const votesArr = snapV.docs.map(d=>d.data());
-  const counts = {};
-  votesArr.forEach(v=> counts[v.submissionId] = (counts[v.submissionId]||0)+1);
-  const ranked = subs.map(s=>({ name: s.name, imageUrl: s.imageUrl, votes: counts[s.id]||0 })).sort((a,b)=>b.votes-a.votes);
-  const el = document.getElementById('rankings'); el.innerHTML = '';
-  ranked.forEach(r=>{ const d=document.createElement('div'); d.className='rank'; d.textContent = `${r.name} — ${r.votes} Stimmen`; el.appendChild(d); });
-}
-
-document.getElementById('btn-export-csv').addEventListener('click', async ()=>{
-  const snapS = await getDocs(collection(db,'submissions'));
-  const snapV = await getDocs(collection(db,'votes'));
-  const subs = snapS.docs.map(d=>({ id:d.id, ...d.data() }));
-  const votesArr = snapV.docs.map(d=>d.data());
-  const counts = {};
-  votesArr.forEach(v=> counts[v.submissionId] = (counts[v.submissionId]||0)+1);
-  const rows = [['Name','ImageUrl','Votes']];
-  subs.forEach(s=> rows.push([s.name, s.imageUrl, counts[s.id]||0]));
-  const csv = rows.map(r=> r.map(c=> '"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
-  const blob = new Blob([csv],{type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'rankings.csv'; a.click();
+  const sess = getSession();
+  if(sess.userId) renderVoting(sess.userId);
 });
 
-// initial load
-loadSubmissions(); loadVotes();
+// Submit vote button
+document.getElementById('btn-submit-vote').addEventListener('click', async ()=>{
+  const sess = getSession();
+  if(!sess.userId){ alert('Bitte zuerst anmelden.'); showPage(loginPage); return; }
+  if(!currentSelection){ alert('Bitte ein Foto auswählen.'); return; }
+  // check existing vote by this user
+  const q = query(collection(db,'votes'), where('voterId','==',sess.userId));
+  const snap = await getDocs(q);
+  if(snap.empty){
+    await addDoc(collection(db,'votes'), { voterId: sess.userId, submissionId: currentSelection, createdAt: serverTimestamp() });
+    alert('Stimme abgegeben');
+  } else {
+    const voteDoc = snap.docs[0];
+    await updateDoc(doc(db,'votes',voteDoc.id), { submissionId: currentSelection, createdAt: serverTimestamp() });
+    alert('Stimme aktualisiert');
+  }
+});
+
+// Show voting page with current user
+async function showVotingForUser(){
+  const sess = getSession();
+  if(!sess.userId){ showPage(loginPage); return; }
+  document.getElementById('current-user').textContent = 'Angemeldet als: ' + sess.username;
+  showPage(votingPage);
+  // pre-select existing vote
+  const userVote = await fetchUserVote(sess.userId);
+  if(userVote) currentSelection = userVote.submissionId;
+  renderVoting(sess.userId);
+}
+
+// initial
+const sess = getSession();
+if(sess.userId) showVotingForUser(); else showPage(loginPage);

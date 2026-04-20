@@ -18,3 +18,10 @@ img{max-width:100%;border-radius:6px}
 footer{padding:8px;text-align:center;color:var(--muted);font-size:13px}
 
 @media (min-width:600px){ main{padding:24px} }
+
+/* small helpers used by index.html */
+.muted-note{margin-top:8px;font-size:0.95rem;color:var(--muted)}
+.small-gap{margin-top:8px}
+.current-user{margin-bottom:8px;color:var(--muted)}
+.btn-inline-space{margin-left:8px}
+.build-banner{margin-top:6px;color:#666;font-size:12px}
