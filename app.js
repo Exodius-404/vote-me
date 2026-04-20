@@ -13,10 +13,9 @@ const firebaseConfig = {
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-app.js';
 import { getFirestore, collection, addDoc, query, where, onSnapshot, orderBy, serverTimestamp, getDocs, updateDoc, doc } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-firestore.js';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-storage.js';
-import { getAnalytics } from 'https://www.gstatic.com/firebasejs/12.12.0/firebase-analytics.js';
+// analytics removed to avoid extra REST calls when project config is missing
 
 const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
