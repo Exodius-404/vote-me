@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Party Vote — Registrieren</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js" defer></script>
+</head>
+<body>
+  <main class="container">
+    <h1>Registrieren</h1>
+    <form id="registerForm">
+      <label for="username">Benutzername</label>
+      <input id="username" name="username" placeholder="Dein Name" autocomplete="off" required />
+
+      <label for="photo">Outfit-Foto</label>
+      <input id="photo" name="photo" type="file" accept="image/*" required />
+      <img id="preview" alt="Vorschau" class="preview" />
+
+      <button type="submit">Registrieren</button>
+    </form>
+    <p class="small"><a href="index.html">Zurück zum Login</a></p>
+  </main>
+</body>
+</html>

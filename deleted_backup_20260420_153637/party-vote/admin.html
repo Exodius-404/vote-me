@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Party Vote — Admin</title>
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="app.js" defer></script>
+</head>
+<body>
+  <main class="container">
+    <h1>Admin Dashboard</h1>
+    <form id="adminLogin">
+      <label for="adminCode">Admin-Code</label>
+      <input id="adminCode" placeholder="Code eingeben" />
+      <button type="submit">Anzeigen</button>
+    </form>
+
+    <section id="results" style="display:none">
+      <h2>Ergebnisse</h2>
+      <ul id="ranking"></ul>
+      <p id="totalVotes"></p>
+    </section>
+  </main>
+</body>
+</html>
