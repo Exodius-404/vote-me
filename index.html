@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Party Outfit Voting — Clean</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Party Outfit Voting</h1>
+    <p>Clean skeleton — Firebase config goes into <em>app.js</em></p>
+  </header>
+
+  <main>
+    <section>
+      <h2>Registrieren</h2>
+      <input id="username" placeholder="Nutzername">
+      <label for="photo">Outfit-Foto</label>
+      <input id="photo" type="file" accept="image/*">
+      <button id="submit">Einreichen</button>
+    </section>
+
+    <section>
+      <h2>Abstimmen</h2>
+      <div id="gallery">Keine Einträge</div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Dieses Repo ist eine saubere Vorlage. Füge `firebaseConfig` in `app.js` ein.</small>
+  </footer>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
