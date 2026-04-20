@@ -1,0 +1,26 @@
+// Development Firestore rules for the Party Outfit Voting app
+// WARNING: These rules are permissive to allow the username-only flow without Firebase Auth.
+// They are NOT secure for production. Replace with stricter rules before going public.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // allow full read for everyone
+    match /{document=**} {
+      allow read: if true;
+    }
+
+    // allow writes for development only
+    // This lets the client create `users`, `submissions`, and `votes` documents.
+    // Replace with authentication-based rules in production.
+    match /users/{userId} {
+      allow create, update, delete: if true;
+    }
+    match /submissions/{subId} {
+      allow create, update, delete: if true;
+    }
+    match /votes/{voteId} {
+      allow create, update, delete: if true;
+    }
+  }
+}
